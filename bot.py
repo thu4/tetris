@@ -28,25 +28,33 @@ class Tetris():
         self.channel = message.channel
     
     async def gameloop(self):
-        
+        self.pos = Tetris.background
+        self.time = 0
+        field = await self.channel.send(await self.draw_field())
         while True:
-            await self.tetromino()
-            await self.draw_field()
-            sleep(0.1)
+            self.pos = Tetris.background
+            await self.timer()
+            await self.mino()
+            await field.edit(content=await self.draw_field())
+            sleep(1)
 
-    async def tetromino(self):
-        pass
+    async def timer(self):
+        self.time += 1
+
+    async def mino(self):
+        minopos = [[1,5],[2,5],[3,5],[4,5]]
+        for i in range(4):
+            self.pos[minopos[i][0]][minopos[i][1]] = '□'
 
     async def draw_field(self):
-        field_msg = ''
+        field_msg = 'Time:{}\n'.format(str(self.time))
         for r in range(18):
             row = ''
             for c in range(12):
-                row += Tetris.background[r][c]
+                row += self.pos[r][c]
             row += '\n'
             field_msg += row
-        self.field = await self.channel.send(field_msg)
-        self.field.edit(field_msg)
+        return field_msg
 
 with open('key.json', 'r') as f:
     token = json.load(f)['token']
