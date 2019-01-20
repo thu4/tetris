@@ -10,17 +10,15 @@ class MyClient(discord.Client):
 
 class Tetris():
 
-    background = {}
+    background = []
     for r in range(18):
-        background[r] = {}
+        background.append([])
         if r == 0 or r == 17:
-            for c in range(12):
-                background[r][c] = '■'
+            background[r] = [1]*12
         else:
-            background[r][0] = '■'
-            background[r][11] = '■'
-            for c in range(1,11):
-                background[r][c] = '　'
+            background[r] = [0]*12
+            background[r][0] = 1
+            background[r][11] = 1
 
     def __init__(self, client, message):
         self.client = client
@@ -28,30 +26,56 @@ class Tetris():
         self.channel = message.channel
     
     async def gameloop(self):
-        self.pos = Tetris.background
+        self.pos = [x[:] for x in Tetris.background]
         self.time = 0
+        self.mino_type = 'I'
+        self.mino_center = [1,5]
         field = await self.channel.send(await self.draw_field())
         while True:
-            self.pos = Tetris.background
+            self.pos = [x[:] for x in Tetris.background]
             await self.timer()
-            await self.mino()
+            await self.mino_fall()
             await field.edit(content=await self.draw_field())
             sleep(1)
 
     async def timer(self):
         self.time += 1
 
-    async def mino(self):
-        minopos = [[1,5],[2,5],[3,5],[4,5]]
-        for i in range(4):
-            self.pos[minopos[i][0]][minopos[i][1]] = '□'
+    async def mino_fall(self):
+        cr = self.mino_center[0]
+        cc = self.mino_center[1]
+        if self.mino_type == 'I':
+            minopos = [[cr,cc-1],[cr,cc],[cr,cc+1],[cr,cc+2]]
+        n = 0
+        for b in range(4):
+            br = minopos[b][0]
+            bc = minopos[b][1]
+            if self.pos[br+1][bc] == 1 or self.pos[br+1][bc] == 3:
+                n = 3
+                break
+            else:
+                n = 2
+        for b in range(4):
+            br = minopos[b][0]
+            bc = minopos[b][1]
+            self.pos[br][bc] = n
+        if n == 2:
+            self.mino_center[0] += 1
 
     async def draw_field(self):
         field_msg = 'Time:{}\n'.format(str(self.time))
         for r in range(18):
             row = ''
             for c in range(12):
-                row += self.pos[r][c]
+                if self.pos[r][c] == 0:
+                    b = '　'
+                elif self.pos[r][c] == 1:
+                    b = '■'
+                elif self.pos[r][c] == 2:
+                    b = '□'
+                elif self.pos[r][c] == 3:
+                    b = '〇'
+                row += b
             row += '\n'
             field_msg += row
         return field_msg
