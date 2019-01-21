@@ -26,20 +26,32 @@ class Tetris():
         self.channel = message.channel
     
     async def gameloop(self):
-        self.pos = [x[:] for x in Tetris.background]
+        self.fixed_pos = []
         self.time = 0
-        self.mino_type = 'I'
-        self.mino_center = [1,5]
+        await self.base_field()
+        await self.mino_set()
         field = await self.channel.send(await self.draw_field())
+        for e in ['◀','▶']:
+            await field.add_reaction(e)
         while True:
             self.pos = [x[:] for x in Tetris.background]
             await self.timer()
+            await self.base_field()
             await self.mino_fall()
             await field.edit(content=await self.draw_field())
             sleep(1)
 
+    async def base_field(self):
+        self.pos = [x[:] for x in Tetris.background]
+        for b in self.fixed_pos:
+            self.pos[b[0]][b[1]] = 3
+
     async def timer(self):
         self.time += 1
+
+    async def mino_set(self):
+        self.mino_type = 'I'
+        self.mino_center = [1,5]
 
     async def mino_fall(self):
         cr = self.mino_center[0]
@@ -52,6 +64,9 @@ class Tetris():
             bc = minopos[b][1]
             if self.pos[br+1][bc] == 1 or self.pos[br+1][bc] == 3:
                 n = 3
+                for i in minopos:
+                    self.fixed_pos.append(i)
+                await self.mino_set()
                 break
             else:
                 n = 2
