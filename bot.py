@@ -1,12 +1,32 @@
 import discord
 import json
 from time import sleep
+from random import choice
 
 class MyClient(discord.Client):
+
+    games = []
+
     async def on_message(self, message):
         if message.content.startswith('/tetris'):
-            tetris = Tetris(self, message)
-            await tetris.gameloop()
+            if message.channel in [i.channel for i in MyClient.games]:
+                await message.channel.send('このチャンネルでは既にゲームが行われています。\n別のチャンネルで開始して下さい。')
+            else:
+                tetris = Tetris(self, message)
+                MyClient.games.append(tetris)
+                await tetris.gameloop()
+
+    async def on_reaction_add(self, reaction, user):
+        if user != self.user:
+            for game in MyClient.games:
+                if reaction.message.channel == game.channel:
+                    if user == game.player:
+                        if reaction.emoji == '◀':
+                            await game.mino_move('left')
+                            await reaction.message.remove_reaction('◀', user)
+                        if reaction.emoji == '▶':
+                            await game.mino_move('right')
+                            await reaction.message.remove_reaction('▶', user)
 
 class Tetris():
 
@@ -50,32 +70,65 @@ class Tetris():
         self.time += 1
 
     async def mino_set(self):
-        self.mino_type = 'I'
+        t = ['I','O','T','J','L','S','Z']
+        self.mino_type = choice(t)
         self.mino_center = [1,5]
 
-    async def mino_fall(self):
+    async def minopos(self):
+        t = self.mino_type
         cr = self.mino_center[0]
         cc = self.mino_center[1]
-        if self.mino_type == 'I':
-            minopos = [[cr,cc-1],[cr,cc],[cr,cc+1],[cr,cc+2]]
+        if t == 'I':
+            return [[cr,cc-1],[cr,cc],[cr,cc+1],[cr,cc+2]]
+        if t == 'O':
+            return [[cr,cc],[cr,cc+1],[cr+1,cc],[cr+1,cc+1]]
+        if t == 'T':
+            return [[cr,cc+1],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
+        if t == 'J':
+            return [[cr,cc],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
+        if t == 'L':
+            return [[cr,cc+2],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
+        if t == 'S':
+            return [[cr,cc+1],[cr,cc+2],[cr+1,cc],[cr+1,cc+1]]
+        if t == 'Z':
+            return [[cr,cc],[cr,cc+1],[cr+1,cc+1],[cr+1,cc+2]]
+        return []
+
+    async def mino_fall(self):
+        minopos = await self.minopos()
         n = 0
         for b in range(4):
             br = minopos[b][0]
             bc = minopos[b][1]
-            if self.pos[br+1][bc] == 1 or self.pos[br+1][bc] == 3:
+            if self.pos[br+1][bc] == 0:
+                n = 2
+            else:
                 n = 3
                 for i in minopos:
                     self.fixed_pos.append(i)
                 await self.mino_set()
                 break
-            else:
-                n = 2
         for b in range(4):
             br = minopos[b][0]
             bc = minopos[b][1]
             self.pos[br][bc] = n
         if n == 2:
             self.mino_center[0] += 1
+
+    async def mino_move(self, direction):
+        minopos = await self.minopos()
+        for b in range(4):
+            br = minopos[b][0]
+            bc = minopos[b][1]
+            if direction == 'right':
+                if self.pos[br][bc+1] == 0:
+                    self.mino_center[1] += 1
+                    break
+            if direction == 'left':
+                if self.pos[br][bc-1] == 0:
+                    self.mino_center[1] -= 1
+                    break
+
 
     async def draw_field(self):
         field_msg = 'Time:{}\n'.format(str(self.time))
