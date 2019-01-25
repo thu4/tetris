@@ -22,10 +22,10 @@ class MyClient(discord.Client):
                 if reaction.message.channel == game.channel:
                     if user == game.player:
                         if reaction.emoji == '◀':
-                            await game.mino_move('left')
+                            game.mino_move_distance -= 1
                             await reaction.message.remove_reaction('◀', user)
                         if reaction.emoji == '▶':
-                            await game.mino_move('right')
+                            game.mino_move_distance += 1
                             await reaction.message.remove_reaction('▶', user)
 
 class Tetris():
@@ -44,10 +44,14 @@ class Tetris():
         self.client = client
         self.player = message.author
         self.channel = message.channel
+        self.time = 0
+        self.pos = []
+        self.fixed_pos = []
+        self.mino_center = []
+        self.mino_move_distance = 0
+        self.mino_type = ''
     
     async def gameloop(self):
-        self.fixed_pos = []
-        self.time = 0
         await self.base_field()
         await self.mino_set()
         field = await self.channel.send(await self.draw_field())
@@ -57,6 +61,7 @@ class Tetris():
             self.pos = [x[:] for x in Tetris.background]
             await self.timer()
             await self.base_field()
+            await self.mino_move()
             await self.mino_fall()
             await field.edit(content=await self.draw_field())
             sleep(1)
@@ -115,20 +120,24 @@ class Tetris():
         if n == 2:
             self.mino_center[0] += 1
 
-    async def mino_move(self, direction):
-        minopos = await self.minopos()
-        for b in range(4):
-            br = minopos[b][0]
-            bc = minopos[b][1]
-            if direction == 'right':
-                if self.pos[br][bc+1] == 0:
+    async def mino_move(self):
+        if self.mino_move_distance > 0:
+            for i in range(self.mino_move_distance):
+                minopos = await self.minopos()
+                rc = max([x[1] for x in minopos])
+                rr = [x[0] for x in minopos if x[1] == rc][0]
+                if self.pos[rr][rc+1] == 0:
                     self.mino_center[1] += 1
-                    break
-            if direction == 'left':
-                if self.pos[br][bc-1] == 0:
+                break
+        elif self.mino_move_distance < 0:
+            for i in range(abs(self.mino_move_distance)):
+                minopos = await self.minopos()
+                lc = min([x[1] for x in minopos])
+                lr = [x[0] for x in minopos if x[1] == lc][0]
+                if self.pos[lr][lc-1] == 0:
                     self.mino_center[1] -= 1
-                    break
-
+                break
+        self.mino_move_distance = 0
 
     async def draw_field(self):
         field_msg = 'Time:{}\n'.format(str(self.time))
