@@ -27,6 +27,9 @@ class MyClient(discord.Client):
                         if reaction.emoji == '▶':
                             game.mino_move_distance += 1
                             await reaction.message.remove_reaction('▶', user)
+                        if reaction.emoji == '⏬':
+                            game.quickdrop = True
+                            await reaction.message.remove_reaction('⏬', user)
 
 class Tetris():
 
@@ -52,10 +55,10 @@ class Tetris():
         self.mino_type = ''
     
     async def gameloop(self):
-        await self.base_field()
-        await self.mino_set()
-        field = await self.channel.send(await self.draw_field())
-        for e in ['◀','▶']:
+        self.base_field()
+        self.mino_set()
+        field = await self.channel.send(self.draw_field())
+        for e in ['◀','▶','⏬']:
             await field.add_reaction(e)
         while True:
             self.pos = [x[:] for x in Tetris.background]
@@ -63,10 +66,11 @@ class Tetris():
             self.base_field()
             self.mino_move()
             self.mino_fall()
-            await field.edit(content=self.draw_field())
+            if self.quickdrop == False:
+                sleep(1)
+                await field.edit(content=self.draw_field())
             if self.is_game_over() == True:
                 break
-            sleep(1)
         await self.game_end()
 
     def base_field(self):
@@ -81,6 +85,7 @@ class Tetris():
         t = ['I','O','T','J','L','S','Z']
         self.mino_type = choice(t)
         self.mino_center = [1,5]
+        self.quickdrop = False
 
     def row_clear(self):
         l = [x[:] for x in self.fixed_pos]
