@@ -59,27 +59,49 @@ class Tetris():
             await field.add_reaction(e)
         while True:
             self.pos = [x[:] for x in Tetris.background]
-            await self.timer()
-            await self.base_field()
-            await self.mino_move()
-            await self.mino_fall()
-            await field.edit(content=await self.draw_field())
+            self.timer()
+            self.base_field()
+            self.mino_move()
+            self.mino_fall()
+            await field.edit(content=self.draw_field())
+            if self.is_game_over() == True:
+                break
             sleep(1)
+        await self.game_end()
 
-    async def base_field(self):
+    def base_field(self):
         self.pos = [x[:] for x in Tetris.background]
         for b in self.fixed_pos:
             self.pos[b[0]][b[1]] = 3
 
-    async def timer(self):
+    def timer(self):
         self.time += 1
 
-    async def mino_set(self):
+    def mino_set(self):
         t = ['I','O','T','J','L','S','Z']
         self.mino_type = choice(t)
         self.mino_center = [1,5]
 
-    async def minopos(self):
+    def row_clear(self):
+        l = [x[:] for x in self.fixed_pos]
+        l.sort(key=lambda x: (x[0],x[1]))
+        print('[debug] {}'.format(l))
+        for r in range(1,17):
+            inl_f = lambda x: x in l
+            rl = []
+            for i in range(1,11):
+                rl.append([r,i])
+            if all(map(inl_f, rl)):
+                for i in range(1,11):
+                    self.fixed_pos.remove([r,i])
+                for b in l:
+                    if b[0] < r:
+                        self.fixed_pos.remove([b[0],b[1]])
+                        self.fixed_pos.append([b[0]+1,b[1]])
+                for b in self.fixed_pos:
+                    self.pos[b[0]][b[1]] = 3
+
+    def minopos(self):
         t = self.mino_type
         cr = self.mino_center[0]
         cc = self.mino_center[1]
@@ -99,8 +121,8 @@ class Tetris():
             return [[cr,cc],[cr,cc+1],[cr+1,cc+1],[cr+1,cc+2]]
         return []
 
-    async def mino_fall(self):
-        minopos = await self.minopos()
+    def mino_fall(self):
+        minopos = self.minopos()
         n = 0
         for b in range(4):
             br = minopos[b][0]
@@ -111,7 +133,6 @@ class Tetris():
                 n = 3
                 for i in minopos:
                     self.fixed_pos.append(i)
-                await self.mino_set()
                 break
         for b in range(4):
             br = minopos[b][0]
@@ -119,11 +140,14 @@ class Tetris():
             self.pos[br][bc] = n
         if n == 2:
             self.mino_center[0] += 1
+        if n == 3:
+            self.mino_set()
+            self.row_clear()
 
-    async def mino_move(self):
+    def mino_move(self):
         if self.mino_move_distance > 0:
             for i in range(self.mino_move_distance):
-                minopos = await self.minopos()
+                minopos = self.minopos()
                 rc = max([x[1] for x in minopos])
                 rr = [x[0] for x in minopos if x[1] == rc][0]
                 if self.pos[rr][rc+1] == 0:
@@ -131,7 +155,7 @@ class Tetris():
                 break
         elif self.mino_move_distance < 0:
             for i in range(abs(self.mino_move_distance)):
-                minopos = await self.minopos()
+                minopos = self.minopos()
                 lc = min([x[1] for x in minopos])
                 lr = [x[0] for x in minopos if x[1] == lc][0]
                 if self.pos[lr][lc-1] == 0:
@@ -139,7 +163,7 @@ class Tetris():
                 break
         self.mino_move_distance = 0
 
-    async def draw_field(self):
+    def draw_field(self):
         field_msg = 'Time:{}\n'.format(str(self.time))
         for r in range(18):
             row = ''
@@ -151,11 +175,21 @@ class Tetris():
                 elif self.pos[r][c] == 2:
                     b = '□'
                 elif self.pos[r][c] == 3:
-                    b = '〇'
+                    b = '□'
                 row += b
             row += '\n'
             field_msg += row
         return field_msg
+
+    def is_game_over(self):
+        for i in self.pos[1]:
+            if i == 3:
+                return True
+        return False
+    
+    async def game_end(self):
+        await self.channel.send('【ゲームオーバー】\nTime:{}'.format(self.time))
+        self.client.games.remove(self)
 
 with open('key.json', 'r') as f:
     token = json.load(f)['token']
