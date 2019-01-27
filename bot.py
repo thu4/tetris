@@ -23,13 +23,22 @@ class MyClient(discord.Client):
                     if user == game.player:
                         if reaction.emoji == '◀':
                             game.mino_move_distance -= 1
-                            await reaction.message.remove_reaction('◀', user)
                         if reaction.emoji == '▶':
                             game.mino_move_distance += 1
-                            await reaction.message.remove_reaction('▶', user)
                         if reaction.emoji == '⏬':
                             game.quickdrop = True
-                            await reaction.message.remove_reaction('⏬', user)
+
+    async def on_reaction_remove(self, reaction, user):
+        if user != self.user:
+            for game in MyClient.games:
+                if reaction.message.channel == game.channel:
+                    if user == game.player:
+                        if reaction.emoji == '◀':
+                            game.mino_move_distance -= 1
+                        if reaction.emoji == '▶':
+                            game.mino_move_distance += 1
+                        if reaction.emoji == '⏬':
+                            game.quickdrop = True
 
 class Tetris():
 
