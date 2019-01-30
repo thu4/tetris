@@ -99,7 +99,6 @@ class Tetris():
     def row_clear(self):
         l = [x[:] for x in self.fixed_pos]
         l.sort(key=lambda x: (x[0],x[1]))
-        print('[debug] {}'.format(l))
         for r in range(1,17):
             inl_f = lambda x: x in l
             rl = []
@@ -107,11 +106,14 @@ class Tetris():
                 rl.append([r,i])
             if all(map(inl_f, rl)):
                 for i in range(1,11):
-                    self.fixed_pos.remove([r,i])
-                for b in l:
-                    if b[0] < r:
-                        self.fixed_pos.remove([b[0],b[1]])
-                        self.fixed_pos.append([b[0]+1,b[1]])
+                    l.remove([r,i])
+                    self.pos[r][i] = 0
+                fl = [x for x in l if x[0] < r]
+                for b in fl:
+                    l.remove([b[0],b[1]])
+                    l.append([b[0]+1,b[1]])
+                    self.pos[b[0]][b[1]] = 0
+                self.fixed_pos = l
                 for b in self.fixed_pos:
                     self.pos[b[0]][b[1]] = 3
 
@@ -202,7 +204,7 @@ class Tetris():
         return False
     
     async def game_end(self):
-        await self.channel.send('【ゲームオーバー】\nTime:{}'.format(self.time))
+        await self.channel.send('【ゲームオーバー】')
         self.client.games.remove(self)
 
 with open('key.json', 'r') as f:
