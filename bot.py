@@ -27,6 +27,11 @@ class MyClient(discord.Client):
                             game.mino_move_distance += 1
                         if reaction.emoji == '⏬':
                             game.quickdrop = True
+                        if reaction.emoji == '🔁':
+                            if game.mino_rotation == 3:
+                                game.mino_rotation = 0
+                            else:
+                                game.mino_rotation += 1
 
     async def on_reaction_remove(self, reaction, user):
         if user != self.user:
@@ -39,6 +44,11 @@ class MyClient(discord.Client):
                             game.mino_move_distance += 1
                         if reaction.emoji == '⏬':
                             game.quickdrop = True
+                        if reaction.emoji == '🔁':
+                            if game.mino_rotation == 3:
+                                game.mino_rotation = 0
+                            else:
+                                game.mino_rotation += 1
 
 class Tetris():
 
@@ -60,19 +70,23 @@ class Tetris():
         self.pos = []
         self.fixed_pos = []
         self.mino_center = []
+        self.mino_pos = []
         self.mino_move_distance = 0
         self.mino_type = ''
+        self.mino_rotation = 0
     
     async def gameloop(self):
         self.base_field()
         self.mino_set()
         field = await self.channel.send(self.draw_field())
-        for e in ['◀','▶','⏬']:
+        for e in ['◀','▶','⏬','🔁']:
             await field.add_reaction(e)
         while True:
             self.pos = [x[:] for x in Tetris.background]
             self.timer()
             self.base_field()
+            self.mino_setpos()
+            self.mino_rotate()
             self.mino_move()
             self.mino_fall()
             if self.quickdrop == False:
@@ -95,6 +109,7 @@ class Tetris():
         self.mino_type = choice(t)
         self.mino_center = [1,5]
         self.quickdrop = False
+        self.mino_rotation = 0
 
     def row_clear(self):
         l = [x[:] for x in self.fixed_pos]
@@ -117,28 +132,27 @@ class Tetris():
                 for b in self.fixed_pos:
                     self.pos[b[0]][b[1]] = 3
 
-    def minopos(self):
+    def mino_setpos(self):
         t = self.mino_type
         cr = self.mino_center[0]
         cc = self.mino_center[1]
         if t == 'I':
-            return [[cr,cc-1],[cr,cc],[cr,cc+1],[cr,cc+2]]
+            self.mino_pos = [[cr,cc-1],[cr,cc],[cr,cc+1],[cr,cc+2]]
         if t == 'O':
-            return [[cr,cc],[cr,cc+1],[cr+1,cc],[cr+1,cc+1]]
+            self.mino_pos = [[cr,cc],[cr,cc+1],[cr+1,cc],[cr+1,cc+1]]
         if t == 'T':
-            return [[cr,cc+1],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
+            self.mino_pos = [[cr,cc+1],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
         if t == 'J':
-            return [[cr,cc],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
+            self.mino_pos = [[cr,cc],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
         if t == 'L':
-            return [[cr,cc+2],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
+            self.mino_pos = [[cr,cc+2],[cr+1,cc],[cr+1,cc+1],[cr+1,cc+2]]
         if t == 'S':
-            return [[cr,cc+1],[cr,cc+2],[cr+1,cc],[cr+1,cc+1]]
+            self.mino_pos = [[cr,cc+1],[cr,cc+2],[cr+1,cc],[cr+1,cc+1]]
         if t == 'Z':
-            return [[cr,cc],[cr,cc+1],[cr+1,cc+1],[cr+1,cc+2]]
-        return []
+            self.mino_pos = [[cr,cc],[cr,cc+1],[cr+1,cc+1],[cr+1,cc+2]]
 
     def mino_fall(self):
-        minopos = self.minopos()
+        minopos = self.mino_pos
         n = 0
         for b in range(4):
             br = minopos[b][0]
@@ -163,21 +177,52 @@ class Tetris():
     def mino_move(self):
         if self.mino_move_distance > 0:
             for i in range(self.mino_move_distance):
-                minopos = self.minopos()
+                minopos = self.mino_pos
                 rc = max([x[1] for x in minopos])
                 rr = [x[0] for x in minopos if x[1] == rc][0]
+                print(rr, rc)
                 if self.pos[rr][rc+1] == 0:
                     self.mino_center[1] += 1
                 break
         elif self.mino_move_distance < 0:
             for i in range(abs(self.mino_move_distance)):
-                minopos = self.minopos()
+                minopos = self.mino_pos
                 lc = min([x[1] for x in minopos])
                 lr = [x[0] for x in minopos if x[1] == lc][0]
                 if self.pos[lr][lc-1] == 0:
                     self.mino_center[1] -= 1
                 break
         self.mino_move_distance = 0
+
+    def mino_rotate(self):
+        t = self.mino_type
+        r = self.mino_rotation
+        cr = self.mino_center[0]
+        cc = self.mino_center[1]
+        lm = self.mino_pos[:]
+        if t == 'I':
+            if r % 2 == 1:
+                l = [[cr,cc],[cr+1,cc],[cr+2,cc],[cr+3,cc]]
+                try:
+                    is_in_field = all(map(lambda x: self.pos[x[0]][x[1]] == 0, l))
+                    if is_in_field:
+                        self.mino_pos = l
+                except IndexError:
+                    pass
+        elif t == 'O':
+            pass
+        else:
+            l9 = [[cr,cc],[cr,cc+1],[cr,cc+2],[cr+1,cc+2],[cr+2,cc+2],[cr+2,cc+1],[cr+2,cc],[cr+1,cc]]
+            rm = r * 2
+            if all(map(lambda x: lm[x[0]][x[1]] == 0, l9)):
+                for i in range(8):
+                    if l9[i] in lm:
+                        if i >= (8 - rm):
+                            ri = i - (8 - rm)
+                        else:
+                            ri = i + rm
+                        self.mino_pos.remove(l9[i])
+                        self.mino_pos.append(l9[ri])
 
     def draw_field(self):
         field_msg = 'Time:{}\n'.format(str(self.time))
