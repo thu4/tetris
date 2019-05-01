@@ -91,12 +91,13 @@ class Tetris():
         await self.game_end()
     
     def status(self):
-        print(self.pos)
-        print(self.fixed_pos)
-        print(self.mino_pos)
-        print(self.mino_move_distance)
-        print(self.mino_move_angle)
-        print(self.mino_type)
+        # print(self.pos)
+        # print(self.fixed_pos)
+        # print(self.mino_pos)
+        # print(self.mino_move_distance)
+        # print(self.mino_move_angle)
+        # print(self.mino_type)
+        pass
 
     def base_field(self):
         self.pos = [x[:] for x in Tetris.background]
@@ -104,7 +105,8 @@ class Tetris():
             self.pos[b[0]][b[1]] = 3
 
     def timer(self):
-        self.time += 1
+        if self.quickdrop == False:
+            self.time += 1
 
     def mino_set(self):
         tl = ['I','O','T','J','L','S','Z']
@@ -161,7 +163,7 @@ class Tetris():
                 lc = min([x[1] for x in minopos])
                 lr = min([x[0] for x in minopos if x[1] == lc])
                 minopos3x3 = [[lr,lc],[lr,lc+1],[lr,lc+2],[lr+1,lc+2],[lr+2,lc+2],[lr+2,lc+1],[lr+2,lc],[lr+1,lc]]
-                print('minopos3x3:{}'.format(minopos3x3))
+                #print('minopos3x3:{}'.format(minopos3x3))
                 rm = (r * 2) % 8
                 for i in range(8):
                     if minopos3x3[i] in minopos:
@@ -171,7 +173,7 @@ class Tetris():
                             ri = i + rm
                         minopos.remove(minopos3x3[i])
                         minopos.append(minopos3x3[ri])
-                print('-minopos:{}'.format(minopos))
+                #print('-minopos:{}'.format(minopos))
             # try:
             #     is_in_field = all(map(lambda x: self.pos[x[0]][x[1]] == 0, minopos))
             #     if is_in_field:
@@ -210,7 +212,7 @@ class Tetris():
                 minopos = self.mino_pos
                 rc = max([x[1] for x in minopos])
                 rr = [x[0] for x in minopos if x[1] == rc][0]
-                print(rr, rc)
+                #print(rr, rc)
                 if self.pos[rr][rc+1] == 0:
                     for b in self.mino_pos:
                         b[1] += 1
