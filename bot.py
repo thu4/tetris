@@ -7,6 +7,12 @@ class MyClient(discord.Client):
 
     games = []
 
+    async def on_ready(self):
+        print('起動しました！')
+        print('UserName: ' + self.user.name)
+        guilds_list = ', '.join([i.name for i in self.guilds])
+        print('Guilds: ' + guilds_list)
+
     async def on_message(self, message):
         if message.content.startswith('/tetris'):
             if message.channel in [i.channel for i in MyClient.games]:
